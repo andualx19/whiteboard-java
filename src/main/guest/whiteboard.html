@@ -16,8 +16,8 @@
       <button onclick="setTool('highlighter')">Highlight</button>
 
       <div class="label">Style</div>
-      <input type="color" id="colorPicker" onchange="changeColor(this.value)">
-      <input type="range" id = "widthPicker" min="1" max="20" value="2" onchange="changeWidth(this.value)">
+      <div id="colorMenu"></div>
+      <select id="widthMenu" onchange="changeWidth(this.value)"></select>
 
       <div class="label">View</div>
       <button onclick="changeZoom(0.1)">Zoom +</button>

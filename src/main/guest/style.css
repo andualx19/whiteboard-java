@@ -12,6 +12,7 @@ body {
     display: flex;
     flex: 1;
     overflow: hidden;
+    position: relative;
 }
 
 #toolbar {
@@ -68,11 +69,12 @@ input[type="color"] {
 
 #workspace {
     flex: 1;
-    overflow: auto;
     display: flex;
     justify-content: center;
-    padding: 40px 20px;
-    -webkit-overflow-scrolling: touch;
+    align-items: center;
+    padding: 20px;
+    position: relative;
+    overflow: auto;
 }
 
 canvas {
@@ -81,6 +83,8 @@ canvas {
 
     width: 794px;
     height: 1123px;
+    max-width: 100%;
+    max-height: 1005;
 }
 
 #statusbar {
@@ -92,6 +96,12 @@ canvas {
     align-items: center;
     padding: 0 15px;
     border-top: 1px solid #444;
+
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 200;
 }
 
 #status {
@@ -102,4 +112,15 @@ canvas {
 #switchSide {
     background: #555;
     margin-top: auto;
+}
+
+#widthMenu, #colorMenu button {
+    margin: 2px;
+    cursor: pointer;
+}
+
+#colorMenu button {
+    width: 30px;
+    height: 30px;
+    border: none;
 }
