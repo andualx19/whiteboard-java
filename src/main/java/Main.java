@@ -1,6 +1,7 @@
 import comp.HttpFileServer;
 import comp.WhiteboardServer;
 import comp.Whiteboard;
+import utils.Palette;
 
 import javax.swing.*;
 import java.awt.*;
@@ -12,13 +13,14 @@ public class Main {
         JFrame frame = new JFrame("Whiteboard");
         Whiteboard board = new Whiteboard();
 
-        JPanel centerPanel = new JPanel(new GridBagLayout());
-        centerPanel.setBackground(new Color(82, 86, 89));
-        centerPanel.add(board);
-
         JScrollPane scrollPane = new JScrollPane(board);
-        scrollPane.setBorder(null);
-        scrollPane.getViewport().setBackground(new Color(82, 86, 89));
+        scrollPane.getViewport().setBackground(Palette.UI_BACKGROUND.get());
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+
+        JPanel centerPanel = new JPanel(new GridBagLayout());
+        centerPanel.setBackground(Palette.UI_BACKGROUND.get());
+        centerPanel.add(board);
+        scrollPane.setViewportView(centerPanel);
 
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
         scrollPane.getHorizontalScrollBar().setUnitIncrement(16);

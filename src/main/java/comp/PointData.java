@@ -3,9 +3,8 @@ package comp;
 import java.awt.*;
 
 public class PointData {
-    public int x, y;
-    public Color color;
-    public int size;
+    public final int x, y, size;
+    public final Color color;
 
     public PointData(int x, int y, Color color, int size) {
         this.x = x;

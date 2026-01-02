@@ -2,6 +2,10 @@ var currentColor = "#000000";
 var currentWidth = 5;
 var currentScale = 1.0;
 
+var lastX = null;
+var lastY = null;
+var isDrawing = false;
+
 var baseWidth = 794;
 var baseHeight = 1123;
 
@@ -14,6 +18,7 @@ canvas.height = baseHeight;
 
 var wsUrl = "ws://" + window.location.hostname + ":5000";
 var ws = new WebSocket(wsUrl);
+ws.binaryType = "arraybuffer";
 
 ws.onopen = function() {
     statusLabel.innerText = "Connected";
@@ -66,23 +71,6 @@ function changeWidth(val) {
     currentWidth = parseInt(val,10);
 }
 
-//function resizeCanvas() {
-//    var containerWidth = window.innerWidth;
-//    var containerHeight = window.innerHeight;
-//
-//    var scaleX = containerWidth / baseWidth;
-//    var scaleY = containerHeight / baseHeight;
-//
-//    // scale uniform, încape tot
-//    currentScale = Math.min(scaleX, scaleY);
-//
-//    canvas.style.width = baseWidth * currentScale + "px";
-//    canvas.style.height = baseHeight * currentScale + "px";
-//    canvas.style.transform = "none";
-//}
-//window.addEventListener("resize", resizeCanvas);
-//resizeCanvas();
-
 function getCanvasPos(clientX, clientY){
     var rect = canvas.getBoundingClientRect();
 
@@ -104,21 +92,42 @@ function hexToRgb(hex) {
     return [r, g, b];
 }
 
-function drawPoint(x, y) {
-    ctx.fillStyle = currentColor;
+function drawLine(x, y) {
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.lineWidth = currentWidth;
+    ctx.strokeStyle = currentColor;
+
     ctx.beginPath();
-    ctx.arc(x, y, currentWidth / 2, 0, Math.PI * 2);
-    ctx.fill();
+    if (lastX !== null && lastY !== null) {
+        ctx.moveTo(lastX, lastY);
+        ctx.lineTo(x, y);
+    } else {
+        // Punct de start (sau dacă e doar un click scurt)
+        ctx.moveTo(x, y);
+        ctx.lineTo(x, y);
+    }
+    ctx.stroke();
 
     if (ws.readyState === WebSocket.OPEN) {
         var rgb = hexToRgb(currentColor);
-        ws.send(
-            Math.round(x) + "," +
-            Math.round(y) + "," +
-            rgb[0] + "," + rgb[1] + "," + rgb[2] + "," +
-            currentWidth
-        );
+
+        var buffer = new ArrayBuffer(9);
+        var view = new DataView(buffer);
+
+        view.setUint16(0, Math.round(x));
+        view.setUint16(2, Math.round(y));
+        view.setUint8(4, rgb[0]);
+        view.setUint8(5, rgb[1]);
+        view.setUint8(6, rgb[2]);
+        view.setUint8(7, currentWidth);
+        view.setUint8(8, 1);
+
+        ws.send(buffer);
     }
+
+    lastX = x;
+    lastY = y;
 }
 
 function clearCanvas() {
@@ -128,6 +137,8 @@ function clearCanvas() {
 }
 
 function stopDrawing() {
+    lastX = null;
+    lastY = null;
     if(ws.readyState===WebSocket.OPEN) ws.send("STOP");
 }
 
@@ -146,50 +157,54 @@ function changeZoom(delta) {
 }
 
 canvas.addEventListener("mousedown", function(e) {
-    drawPoint(getCanvasPos(e.clientX,e.clientY).x,getCanvasPos(e.clientX,e.clientY).y);
+    isDrawing = true;
+    var pos = getCanvasPos(e.clientX, e.clientY);
+    drawLine(pos.x, pos.y); // Folosim numele corect
 });
 
 canvas.addEventListener("mousemove", function(e) {
-    if(e.buttons!==1) return;
-    drawPoint(getCanvasPos(e.clientX,e.clientY).x,getCanvasPos(e.clientX,e.clientY).y);
+    if(!isDrawing) return;
+    var pos = getCanvasPos(e.clientX, e.clientY);
+    drawLine(pos.x, pos.y);
 });
-
-canvas.addEventListener("mouseup", stopDrawing);
-
-var lastDist = 0;
 
 canvas.addEventListener("touchstart", function(e){
     e.preventDefault();
     if(e.touches.length === 1){
+        isDrawing = true;
         var t = e.touches[0];
         var pos = getCanvasPos(t.clientX, t.clientY);
-        drawPoint(pos.x, pos.y);
+        drawLine(pos.x, pos.y);
     }
-}, false);
+}, {passive: false});
 
 canvas.addEventListener("touchmove", function(e){
-    if(e.touches.length === 1){
-        e.preventDefault();
+    e.preventDefault();
+    if(isDrawing && e.touches.length === 1){
         var t = e.touches[0];
         var pos = getCanvasPos(t.clientX, t.clientY);
-        drawPoint(pos.x, pos.y);
-    } else if(e.touches.length === 2){
-        e.preventDefault();
-        var t1 = e.touches[0];
-        var t2 = e.touches[1];
-        var dx = t2.clientX - t1.clientX;
-        var dy = t2.clientY - t1.clientY;
-        var dist = Math.sqrt(dx*dx + dy*dy);
-
-        if(lastDist > 0){
-            var delta = (dist - lastDist) / 200;
-            changeZoom(delta);
-        }
-        lastDist = dist;
+        drawLine(pos.x, pos.y);
     }
-}, false);
+}, {passive: false});
 
-canvas.addEventListener("touchend", function(e){
-    if(e.touches.length < 2) lastDist = 0;
-    stopDrawing();
-}, false);
+function stopDrawing() {
+    isDrawing = false;
+    lastX = null;
+    lastY = null;
+    if(ws.readyState === WebSocket.OPEN) ws.send("STOP");
+}
+
+canvas.addEventListener("mouseup", stopDrawing);
+canvas.addEventListener("touchend", stopDrawing);
+canvas.addEventListener("mouseleave", stopDrawing);
+
+var workspace = document.getElementById('workspace');
+
+workspace.onscroll = function() {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        var scrollX = workspace.scrollLeft / workspace.scrollWidth;
+        var scrollY = workspace.scrollTop / workspace.scrollHeight;
+
+        ws.send("SCROLL," + scrollX + "," + scrollY);
+    }
+};

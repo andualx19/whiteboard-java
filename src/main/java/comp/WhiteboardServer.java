@@ -3,13 +3,18 @@ package comp;
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
+import utils.Command;
 
 import javax.swing.*;
 import java.awt.*;
 import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class WhiteboardServer extends WebSocketServer {
     private final Whiteboard board;
+    private final ExecutorService workerPool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
 
     public WhiteboardServer(int port, Whiteboard board) {
         super(new InetSocketAddress(port));
@@ -27,42 +32,62 @@ public class WhiteboardServer extends WebSocketServer {
     }
 
     @Override
-    public void onMessage(WebSocket webSocket, String s) {
-        if (s.startsWith("ZOOM,")) {
+    public void onMessage(WebSocket conn, ByteBuffer message) {
+        workerPool.submit(() -> {
             try {
-                String[] parts = s.split(",");
-                double scale = Double.parseDouble(parts[1]);
+                int x = message.getShort(0) & 0xFFFF; // Citim 2 bytes
+                int y = message.getShort(2) & 0xFFFF; // Citim 2 bytes
+                int r = message.get(4) & 0xFF;        // Citim 1 byte
+                int g = message.get(5) & 0xFF;
+                int b = message.get(6) & 0xFF;
+                int size = message.get(7) & 0xFF;
+                int type = message.get(8) & 0xFF;
 
-                SwingUtilities.invokeLater(() -> {
-                    board.setZoom(scale);
-                });
+                if (type == 1) {
+                    int alpha = (size > 20) ? 120 : 225;
+                    Color color = new Color(r, g, b, alpha);
+
+                    board.addPoint(new PointData(x, y, color, size));
+                }
             } catch (Exception e) {
-                System.err.println("Zoom error: " + s);
+                e.printStackTrace();
             }
-            return;
-        } else if (s.equalsIgnoreCase("CLEAR")) {
-            board.clearBoard();
-            return;
-        } else if (s.equalsIgnoreCase("STOP")) {
-            board.resetLastPoint();
-            return;
-        }
+        });
+    }
 
-        try {
-            String[] parts = s.split(",");
-            int x = Integer.parseInt(parts[0]);
-            int y = Integer.parseInt(parts[1]);
-            int r = Integer.parseInt(parts[2]);
-            int g = Integer.parseInt(parts[3]);
-            int b = Integer.parseInt(parts[4]);
-            int size = Integer.parseInt(parts[5]);
+    @Override
+    public void onMessage(WebSocket webSocket, String s) {
+        workerPool.submit(() -> {
+            try {
+                Command cmd = Command.fromString(s);
 
-            Color color = new Color(r, g, b);
-
-            board.addPoint(new PointData(x, y, color, size));
-        } catch (Exception e) {
-            System.err.println("ERROR: " + s);
-        }
+                switch (cmd) {
+                    case ZOOM:
+                        double scale = Double.parseDouble(s.split(",")[1]);
+                        SwingUtilities.invokeLater(() -> {
+                            board.setZoom(scale);
+                        });
+                        break;
+                    case SCROLL:
+                        double percentX = Double.parseDouble(s.split(",")[1]);
+                        double percentY = Double.parseDouble(s.split(",")[2]);
+                        SwingUtilities.invokeLater(() -> {
+                            board.syncScroll(percentX, percentY);
+                        });
+                        break;
+                    case CLEAR:
+                        board.clearBoard();
+                        break;
+                    case STOP:
+                        board.resetLastPoint();
+                        break;
+                    default:
+                        System.err.println("Unknown command: " + s);
+                }
+            } catch (Exception e) {
+                System.err.println("ERROR: " + s);
+            }
+        });
     }
 
     @Override
