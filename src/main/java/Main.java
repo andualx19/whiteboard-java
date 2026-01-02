@@ -1,5 +1,5 @@
 import comp.HttpFileServer;
-import comp.WhiteboarServer;
+import comp.WhiteboardServer;
 import comp.Whiteboard;
 
 import javax.swing.*;
@@ -12,24 +12,35 @@ public class Main {
         JFrame frame = new JFrame("Whiteboard");
         Whiteboard board = new Whiteboard();
 
-        board.setPreferredSize(new java.awt.Dimension(794, 1123));
+        JPanel centerPanel = new JPanel(new GridBagLayout());
+        centerPanel.setBackground(new Color(82, 86, 89));
+        centerPanel.add(board);
 
         JScrollPane scrollPane = new JScrollPane(board);
-        frame.add(scrollPane, BorderLayout.CENTER);
+        scrollPane.setBorder(null);
+        scrollPane.getViewport().setBackground(new Color(82, 86, 89));
+
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        scrollPane.getHorizontalScrollBar().setUnitIncrement(16);
 
         frame.setLayout(new BorderLayout());
-
         frame.add(scrollPane, BorderLayout.CENTER);
 
-        JButton clearButton = new JButton("Clear");
-        clearButton.addActionListener(e -> board.clearBoard());
-        frame.add(clearButton, BorderLayout.SOUTH);
-
-        frame.setSize(900, 700);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setVisible(true);
+        frame.setUndecorated(true);
 
-        WhiteboarServer server = new WhiteboarServer(5000, board);
+        GraphicsDevice gd = GraphicsEnvironment
+                .getLocalGraphicsEnvironment()
+                .getDefaultScreenDevice();
+
+        if (gd.isFullScreenSupported()) {
+            gd.setFullScreenWindow(frame);
+        } else {
+            frame.setExtendedState(JFrame.MAXIMIZED_BOTH);
+            frame.setVisible(true);
+        }
+
+        WhiteboardServer server = new WhiteboardServer(5000, board);
         server.start();
 
         HttpFileServer.start(8080);

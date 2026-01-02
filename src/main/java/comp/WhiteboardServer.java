@@ -4,13 +4,14 @@ import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
 
+import javax.swing.*;
 import java.awt.*;
 import java.net.InetSocketAddress;
 
-public class WhiteboarServer extends WebSocketServer {
+public class WhiteboardServer extends WebSocketServer {
     private final Whiteboard board;
 
-    public WhiteboarServer(int port, Whiteboard board) {
+    public WhiteboardServer(int port, Whiteboard board) {
         super(new InetSocketAddress(port));
         this.board = board;
     }
@@ -27,12 +28,22 @@ public class WhiteboarServer extends WebSocketServer {
 
     @Override
     public void onMessage(WebSocket webSocket, String s) {
-        if (s.equalsIgnoreCase("CLEAR")) {
+        if (s.startsWith("ZOOM,")) {
+            try {
+                String[] parts = s.split(",");
+                double scale = Double.parseDouble(parts[1]);
+
+                SwingUtilities.invokeLater(() -> {
+                    board.setZoom(scale);
+                });
+            } catch (Exception e) {
+                System.err.println("Zoom error: " + s);
+            }
+            return;
+        } else if (s.equalsIgnoreCase("CLEAR")) {
             board.clearBoard();
             return;
-        }
-
-        if (s.equalsIgnoreCase("STOP")) {
+        } else if (s.equalsIgnoreCase("STOP")) {
             board.resetLastPoint();
             return;
         }

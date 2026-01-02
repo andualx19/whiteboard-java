@@ -9,6 +9,9 @@ var canvas = document.getElementById("canvas");
 var ctx = canvas.getContext("2d");
 var statusLabel = document.getElementById("status");
 
+canvas.width = baseWidth;
+canvas.height = baseHeight;
+
 var wsUrl = "ws://" + window.location.hostname + ":5000";
 var ws = new WebSocket(wsUrl);
 
@@ -63,12 +66,32 @@ function changeWidth(val) {
     currentWidth = parseInt(val,10);
 }
 
-function getCanvasPos(clientX, clientY) {
+//function resizeCanvas() {
+//    var containerWidth = window.innerWidth;
+//    var containerHeight = window.innerHeight;
+//
+//    var scaleX = containerWidth / baseWidth;
+//    var scaleY = containerHeight / baseHeight;
+//
+//    // scale uniform, încape tot
+//    currentScale = Math.min(scaleX, scaleY);
+//
+//    canvas.style.width = baseWidth * currentScale + "px";
+//    canvas.style.height = baseHeight * currentScale + "px";
+//    canvas.style.transform = "none";
+//}
+//window.addEventListener("resize", resizeCanvas);
+//resizeCanvas();
+
+function getCanvasPos(clientX, clientY){
     var rect = canvas.getBoundingClientRect();
 
+    var scaleX = canvas.width / rect.width;
+    var scaleY = canvas.height / rect.height;
+
     return {
-        x: (clientX - rect.left) / currentScale,
-        y: (clientY - rect.top) / currentScale
+        x: (clientX - rect.left) * scaleX,
+        y: (clientY - rect.top) * scaleY
     };
 }
 
@@ -89,7 +112,12 @@ function drawPoint(x, y) {
 
     if (ws.readyState === WebSocket.OPEN) {
         var rgb = hexToRgb(currentColor);
-        ws.send(Math.round(x) + "," + Math.round(y) + "," + rgb[0] + "," + rgb[1] + "," + rgb[2] + "," + currentWidth);
+        ws.send(
+            Math.round(x) + "," +
+            Math.round(y) + "," +
+            rgb[0] + "," + rgb[1] + "," + rgb[2] + "," +
+            currentWidth
+        );
     }
 }
 
@@ -99,18 +127,22 @@ function clearCanvas() {
     if(ws.readyState===WebSocket.OPEN) ws.send("CLEAR");
 }
 
+function stopDrawing() {
+    if(ws.readyState===WebSocket.OPEN) ws.send("STOP");
+}
+
 function changeZoom(delta) {
     currentScale += delta;
 
     if(currentScale < 0.5) currentScale = 0.5;
     if(currentScale > 2.0) currentScale = 2.0;
 
-    canvas.style.transform = `scale(${currentScale})`;
-    canvas.style.transformOrigin = "center";
-}
+    canvas.style.width = (baseWidth * currentScale) + "px";
+    canvas.style.height = (baseHeight * currentScale) + "px";
 
-function stopDrawing() {
-    if(ws.readyState===WebSocket.OPEN) ws.send("STOP");
+    if(ws.readyState === WebSocket.OPEN) {
+        ws.send("ZOOM," + currentScale);
+    }
 }
 
 canvas.addEventListener("mousedown", function(e) {
@@ -124,15 +156,40 @@ canvas.addEventListener("mousemove", function(e) {
 
 canvas.addEventListener("mouseup", stopDrawing);
 
-canvas.addEventListener("touchstart", function(e) {
-    var t = e.touches[0];
-    drawPoint(getCanvasPos(t.clientX,t.clientY).x,getCanvasPos(t.clientX,t.clientY).y);
-});
+var lastDist = 0;
 
-canvas.addEventListener("touchmove", function(e) {
+canvas.addEventListener("touchstart", function(e){
     e.preventDefault();
-    var t=e.touches[0];
-    drawPoint(getCanvasPos(t.clientX,t.clientY).x,getCanvasPos(t.clientX,t.clientY).y);
-},false);
+    if(e.touches.length === 1){
+        var t = e.touches[0];
+        var pos = getCanvasPos(t.clientX, t.clientY);
+        drawPoint(pos.x, pos.y);
+    }
+}, false);
 
-canvas.addEventListener("touchend", stopDrawing);
+canvas.addEventListener("touchmove", function(e){
+    if(e.touches.length === 1){
+        e.preventDefault();
+        var t = e.touches[0];
+        var pos = getCanvasPos(t.clientX, t.clientY);
+        drawPoint(pos.x, pos.y);
+    } else if(e.touches.length === 2){
+        e.preventDefault();
+        var t1 = e.touches[0];
+        var t2 = e.touches[1];
+        var dx = t2.clientX - t1.clientX;
+        var dy = t2.clientY - t1.clientY;
+        var dist = Math.sqrt(dx*dx + dy*dy);
+
+        if(lastDist > 0){
+            var delta = (dist - lastDist) / 200;
+            changeZoom(delta);
+        }
+        lastDist = dist;
+    }
+}, false);
+
+canvas.addEventListener("touchend", function(e){
+    if(e.touches.length < 2) lastDist = 0;
+    stopDrawing();
+}, false);
