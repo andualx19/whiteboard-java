@@ -1,13 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
+  <meta name="apple-mobile-web-app-capable" content="yes"> <meta name="mobile-web-app-capable" content="yes"> <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="style.css">
   <title>Whiteboard</title>
 </head>
+
 <body>
 <div id="main-container">
-  <div id="toolbar" class="left">
+  <nav id="toolbar" class="left">
     <div class="tool-group">
       <button onclick="clearCanvas()" class="btn-clear">Clear</button>
 
@@ -17,7 +19,9 @@
 
       <div class="label">Style</div>
       <div id="colorMenu"></div>
-      <label for="widthMenu"></label><select id="widthMenu" onchange="changeWidth(this.value)"></select>
+
+      <label class="label-hidden" for="widthMenu">Size</label>
+      <select id="widthMenu" onchange="changeWidth(this.value)"></select>
 
       <div class="label">View</div>
       <button onclick="changeZoom(0.1)">Zoom +</button>
@@ -25,16 +29,16 @@
     </div>
 
     <button id="switchSide" onclick="toggleSidebar()">Move</button>
-  </div>
+  </nav>
 
-  <div id="workspace">
-    <canvas id="canvas" width="794" height="1123"></canvas>
-  </div>
+  <main id="workspace">
+    <canvas id="canvas" width="794" height="1123" style="-webkit-transform: translateZ(0); transform: translateZ(0);"></canvas>
+  </main>
 </div>
 
-<div id="statusbar">
+<footer id="statusbar">
   Connection: <span id="status">Connecting...</span>
-</div>
+</footer>
 
 <script src="script.js"></script>
 </body>

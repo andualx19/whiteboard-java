@@ -6,39 +6,59 @@ import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
+import java.util.HashMap;
+import java.util.Map;
 
 public class HttpFileServer {
+    private static final Map<String, byte[]> fileCache = new HashMap<>();
+    private static final Map<String, String> mimeTypes = new HashMap<>();
+
+    static {
+        mimeTypes.put("html", "text/html; charset=UTF-8");
+        mimeTypes.put("css", "text/css; charset=UTF-8");
+        mimeTypes.put("js", "application/javascript; charset=UTF-8");
+        mimeTypes.put("png", "image/png");
+    }
+
     public static void start(int port) throws IOException {
         HttpServer server = HttpServer.create(new InetSocketAddress("0.0.0.0", port), 0);
 
         server.createContext("/", exchange -> {
             String path = exchange.getRequestURI().getPath();
+            if (path.equals("/")) path = "/whiteboard.html";
 
-            if (path.equals("/"))
-                path = "/whiteboard.html";
+            String cleanPath = path.substring(1);
+            byte[] responseData;
 
-            File index = new File("src/main/guest/" + path.substring(1));
-
-            if (!index.exists()) {
-                System.out.println("File not found: " + index.getAbsolutePath());
-                String err = "404 - File not found!";
-                exchange.sendResponseHeaders(404, err.length());
-                exchange.getResponseBody().write(err.getBytes());
+            if (fileCache.containsKey(cleanPath)) {
+                responseData = fileCache.get(cleanPath);
             } else {
-                byte[] data = Files.readAllBytes(index.toPath());
-
-                String contentType = "text/plain";
-                if (path.endsWith(".html")) contentType = "text/html";
-                else if (path.endsWith(".css")) contentType = "text/css";
-                else if (path.endsWith(".js")) contentType = "application/javascript";
-
-                exchange.getResponseHeaders().set("Content-Type", contentType);
-                exchange.sendResponseHeaders(200, data.length);
-                exchange.getResponseBody().write(data);
+                File file = new File("src/main/guest/" + cleanPath);
+                if (file.exists() && !file.isDirectory()) {
+                    responseData = Files.readAllBytes(file.toPath());
+                    fileCache.put(cleanPath, responseData);
+                } else {
+                    String err = "404 - File not found";
+                    exchange.sendResponseHeaders(404, err.length());
+                    exchange.getResponseBody().write(err.getBytes());
+                    exchange.close();
+                    return;
+                }
             }
+
+            String extension = cleanPath.substring(cleanPath.lastIndexOf(".") + 1);
+            String contentType = mimeTypes.getOrDefault(extension, "text/plain");
+
+            exchange.getResponseHeaders().set("Content-Type", contentType);
+            exchange.getResponseHeaders().set("Cache-Control", "max-age=3600");
+
+            exchange.sendResponseHeaders(200, responseData.length);
+            exchange.getResponseBody().write(responseData);
+
             exchange.close();
         });
 
+        server.setExecutor(java.util.concurrent.Executors.newCachedThreadPool());
         server.start();
         System.out.println("HTTP PORT: " + port);
     }

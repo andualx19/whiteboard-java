@@ -1,14 +1,19 @@
 package utils;
 
 public enum Command {
-    DRAW, ZOOM, SCROLL, CLEAR, STOP, UNKNOWN;
+    DRAW(1),
+    STOP(0),
+    CLEAR(2),
+    ZOOM(3),
+    SCROLL(4);
 
-    public static Command fromString(String s) {
-        if (s.startsWith("ZOOM,")) return ZOOM;
-        if (s.startsWith("SCROLL,")) return SCROLL;
-        if (s.equalsIgnoreCase("CLEAR")) return CLEAR;
-        if (s.equalsIgnoreCase("STOP")) return STOP;
-        if (s.contains(",")) return DRAW;
-        return UNKNOWN;
+    public final int value;
+
+    Command(int value) {
+        this.value = value;
+    }
+
+    public int getValue() {
+        return value;
     }
 }
