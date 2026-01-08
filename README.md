@@ -1,46 +1,90 @@
-# Multi-Threaded Whiteboard System
-A high-performance Java drawing suite with real-time WebSocket synchronization.
+# Multi-Threaded Java Whiteboard System
+
+A Java-based whiteboard application designed for real-time drawing over a network, using a multi-threaded architecture to keep UI rendering responsive and smooth.
+
+---
 
 ## Overview
-This application provides a robust real-time whiteboard experience. 
-Built for performance, it uses a multithreaded architecture to ensure that drawing, 
-network processing, and UI rendering never interfere with each other, even when used 
-from older tablet browsers.
+
+This project implements a real-time whiteboard system where drawing input is received from a remote client (e.g. tablet or browser) and rendered on a desktop application.  
+The architecture separates UI rendering, network communication, and data processing to avoid lag and blocking, even on lower-end or older devices.
+
+---
 
 ## Tech Stack
-- Core: Java 17+
-- GUI: Java Swing (with 2D Graphics optimization)
-- Networking: Java-WebSocket
-- Concurrency: Java ExecutorService (Fixed Thread Pool)
-- Build Tool: IntelliJ IDEA / Maven
+
+- **Language:** Java 17+
+- **GUI:** Java Swing (2D Graphics)
+- **Networking:** Java-WebSocket
+- **Concurrency:** ExecutorService (Fixed Thread Pool)
+- **IDE:** IntelliJ IDEA
+
+---
 
 ## Key Features
-- Real-Time Binary Protocol: Uses ByteBuffer for ultra-low latency coordinate transmission.
-- Multi-Threaded Processing: A dedicated WorkerPool handles incoming network packets, keeping 
-the UI thread (EDT) lag-free.
-- Advanced Sync: Synchronized Zoom and Scroll capabilities between the remote client (tablet) 
-and the host.
-- Smooth Rendering: Features antialiasing, bilinear interpolation, and custom BasicStroke for 
-fluid, rounded lines.
-- Robust Error Handling: Custom ProtocolException and logging via java.util.logging to manage 
-legacy browser connectivity.
 
-## Architecture & Design Patterns
-The project follows a Decoupled Observer Pattern:
-1. WhiteboardServer: The "Subject" that parses incoming binary/string data.
-2. WhiteboardListener: The interface that defines the contract for any UI component.
-3. Whiteboard: The concrete implementation that manages the BufferedImage canvas and 
-the ConcurrentLinkedQueue for batch rendering.
+- **Real-Time Drawing:** Drawing coordinates are transmitted and rendered live.
+- **Multi-Threaded Architecture:**  
+  Network communication and packet processing run on background threads, keeping the Swing EDT responsive.
+- **Binary Data Transfer:**  
+  Uses `ByteBuffer` for efficient transmission of drawing coordinates.
+- **Smooth Rendering:**  
+  Anti-aliasing, rounded strokes, and optimized 2D rendering for natural-looking lines.
+- **Basic Synchronization:**  
+  Drawing state is kept consistent between client and host.
+- **Error Handling & Logging:**  
+  Graceful handling of malformed packets and connection issues using custom exceptions and logging.
+
+---
+
+## Architecture & Design
+
+The project follows a **decoupled, event-driven design** inspired by the Observer pattern:
+
+- **WhiteboardServer**  
+  Handles WebSocket connections and parses incoming binary or string data.
+- **WhiteboardListener**  
+  Interface defining how UI components receive drawing updates.
+- **Whiteboard**  
+  Concrete implementation that manages the drawing canvas using a `BufferedImage` and queues render updates.
+
+This separation allows networking logic and UI rendering to evolve independently.
+
+---
+
+## How It Works
+
+1. The client captures drawing input (coordinates, strokes).
+2. Data is sent over a WebSocket connection to the server.
+3. Incoming packets are processed by a worker thread pool.
+4. Parsed drawing commands are forwarded to the UI layer.
+5. The whiteboard renders updates smoothly on the desktop canvas.
+
+---
 
 ## How to Run
+
 1. Clone the repository:
    ```bash
-   git clone https://github.com/USERNAME/REPO_NAME.git
-2. Open in IntelliJ IDEA
-   - File > Open -> Select the project folder.
-3. Run the Application
-   - Locate the Main class.
-   - Run it to start the WebSocket server on the default port (e.g., 5000).
+   git clone https://github.com/andualx19/whiteboard-java.git
+2. Open the project in IntelliJ IDEA
+3. Locate the Main class
+4. Run the application to start the WebSocket server (default port: 8000)
+5. Connect a client from the same Wi-Fi network
 
-## Authors:
-- Andu - Lead Developer
+## Limitations
+
+- Single client connection
+- No authentication or encryption
+- Basic drawing tools only
+- Experimental zoom/scroll synchronization
+
+## Future Improvements
+
+- Multi-client support
+- Undo / redo functionality
+- Canvas export (PNG/PDF)
+- Improved UI and toolset
+- Secure WebSocket communication (WSS)
+
+## Author: Andu - Lead Developer
